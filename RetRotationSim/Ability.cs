@@ -47,18 +47,22 @@ namespace RetRotationSim
         
         public bool Cast ()
         {
-            if (GcdActive || Ready > Sim.Time || !IsUsable)
+            if (Sim.IsGcd || Ready > Sim.Time || !IsUsable)
                 return false;
             
             Ready = Sim.Time + Cooldown;
             OnCast(this);
             
+            // Schedule a dummy event for when the cooldown finishes
+            if (Ready > Sim.Time)
+                Sim.AddEvent(Ready, AbilityReady);
+            
             return true;
         }
         
-        private bool GcdActive
+        private void AbilityReady ()
         {
-            get { return Sim.GcdDone > Sim.Time; }
+            // 
         }
     }
 }

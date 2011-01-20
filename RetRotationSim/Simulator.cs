@@ -6,6 +6,8 @@ using System;
 using System.Diagnostics.Contracts;
 using System.Collections.Generic;
 
+using RetRotationSim.Collections;
+
 namespace RetRotationSim
 {
     /// <summary>
@@ -13,6 +15,29 @@ namespace RetRotationSim
     /// </summary>
     public abstract class Simulator
     {
+        public sealed class Event : IComparable<Event>
+        {
+            public TimeSpan Time { get; private set; }
+            public Action Action { get; private set; }
+            
+            public Event (TimeSpan time, Action action)
+            {
+                Contract.Requires(time >= TimeSpan.Zero);
+                Contract.Requires(action != null);
+                
+                Time = time;
+                Action = action;
+            }
+            
+            public int CompareTo (Event other)
+            {
+                // Sort events from highest to lowest (heap returns last to first)
+                return other.Time.CompareTo(Time);
+            }
+        }
+        
+        private readonly IPriorityQueue<Event> _events = new Heap<Event>();
+        
         public Simulator ()
         {
             WeaponSpeed = 3.6 / 1.09 / 1.1;
@@ -30,34 +55,48 @@ namespace RetRotationSim
         public bool Has4pPvp { get; set; }
         public bool HasConsecrationGlyph { get; set; }
         
-        public Action<Simulator> Rotation { get; set; }
+        public event Action<Simulator> OnEvent = delegate { };
         
         public Random Random { get; set; }
         
         // Informational properties
         public int HolyPower { get; protected set; }
         
-        public TimeSpan GcdDone { get; protected set; }
         public TimeSpan Time { get; protected set; }
+        public TimeSpan GcdDone { get; protected set; }
+        public bool IsGcd { get { return GcdDone > Time; } }
         
         public AutoAttack MainHand { get; protected set; }
         
         public TimeSpan TotalRuntime { get; protected set; }
         
         // Methods
+        public void AddEvent (TimeSpan time, Action action)
+        {
+            Contract.Requires(time >= Time);
+            Contract.Requires(action != null);
+            
+            _events.Push(new Event(time, action));
+        }
+        
         public void Run (TimeSpan fightDuration)
         {
             Time = TimeSpan.Zero;
             
-            MainHand.Start();
+            Init();
             
-            while (Time < fightDuration)
+            while (_events.Count > 0)
             {
-                MainHand.Update();
+                Event next = _events.Pop();
                 
-                Rotation(this);
+                if (next.Time >= fightDuration)
+                    break;
                 
-                Time = NextReady(MainHand.IsAttacking ? MainHand.NextSwing : TimeSpan.MaxValue);
+                Time = next.Time;
+                
+                next.Action();
+                
+                OnEvent(this);
             }
             
             Time = fightDuration;
@@ -65,32 +104,9 @@ namespace RetRotationSim
             TotalRuntime += fightDuration;
         }
         
-        private TimeSpan NextReady (TimeSpan nextSwing)
+        protected virtual void Init ()
         {
-            var min = TimeSpan.MaxValue;
-            
-            if (MainHand.IsAttacking)
-                min = Min(min, MainHand.NextSwing);
-            
-            if (GcdDone > Time && GcdDone < min)
-                min = GcdDone;
-            
-            foreach (var kvp in _ability)
-            {
-                var ready = kvp.Value.Ready;
-                if (ready > Time && ready < min)
-                    min = ready;
-            }
-            
-            return min;
-        }
-        
-        private TimeSpan Min (TimeSpan oldMin, TimeSpan other)
-        {
-            if (other < oldMin && other > Time)
-            if (other > oldMin || other < Time)
-                return oldMin;
-            return other;
+            MainHand.Start();
         }
         
         public void Reset ()
@@ -100,6 +116,9 @@ namespace RetRotationSim
             _buffImpl.Clear();
             _buff.Clear();
             _ability.Clear();
+            
+            _events.Clear();
+            Time = TimeSpan.Zero;
         }
         
         private readonly Dictionary<string, BuffImpl> _buffImpl = new Dictionary<string, BuffImpl>();
@@ -142,6 +161,8 @@ namespace RetRotationSim
             abil.OnCast += (ability) =>
             {
                 GcdDone = Time + ability.Gcd;
+                if (GcdDone > Time)
+                    AddEvent(GcdDone, delegate { });
             };
         }
         

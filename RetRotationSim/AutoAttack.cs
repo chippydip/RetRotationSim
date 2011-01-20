@@ -17,13 +17,13 @@ namespace RetRotationSim
             Contract.Requires(sim != null);
             Contract.Requires(swingTimer != null);
             
-            _sim = sim;
+            Sim = sim;
             _swingTimer = swingTimer;
             
             NextSwing = TimeSpan.Zero;
         }
         
-        private readonly Simulator _sim;
+        private Simulator Sim { get; set; }
         
         private readonly Func<TimeSpan> _swingTimer;
         public TimeSpan SwingTimer { get { return _swingTimer(); } }
@@ -37,13 +37,17 @@ namespace RetRotationSim
         {
             IsAttacking = true;
             
-            if (NextSwing < _sim.Time)
-                NextSwing = _sim.Time;
+            // If NextSwing == Sim.Time we can't tell if the event has fired yet
+            // so schedule another event anyway and let Update() skip the 2nd
+            if (NextSwing <= Sim.Time)
+            {
+                NextSwing = Sim.Time;
+                Sim.AddEvent(NextSwing, Update);
+            }
         }
         
         public void Stop ()
         {
-            Update();
             IsAttacking = false;
         }
         
@@ -55,15 +59,18 @@ namespace RetRotationSim
                 Start();
         }
         
-        public void Update ()
+        private void Update ()
         {
             if (!IsAttacking)
                 return;
             
-            while (NextSwing <= _sim.Time)
+            // Make sure a swing hasn't already happened during this timestep
+            if (NextSwing == Sim.Time)
             {
                 OnSwing();
+                
                 NextSwing += SwingTimer;
+                Sim.AddEvent(NextSwing, Update);
             }
         }
     }

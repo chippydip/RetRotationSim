@@ -20,7 +20,7 @@ namespace RetRotationSim
             foreach (var abil in sim.Abilities)
             {
                 abil.OnCast += OnCast;
-                
+                /*
                 switch (abil.Name)
                 {
                     case "Inquisition":
@@ -43,25 +43,27 @@ namespace RetRotationSim
                         Console.WriteLine("Unexpected Ability: {0}", abil.Name);
                         break;
                 }
+                */
             }
             
             foreach (var buff in sim.Buffs)
             {
                 buff.OnActivate += OnActivate;
                 buff.OnRefresh += OnRefresh;
+                buff.OnExpire += OnExpire;
                 buff.OnCancel += OnCancel;
+                buff.OnTick += OnTick;
             }
         }
         
-        private readonly Dictionary<string, int> _ability = new Dictionary<string, int>();
-        private readonly Dictionary<string, int> _buff = new Dictionary<string, int>();
+        private readonly Dictionary<string, Dictionary<string, int>> _ability = new Dictionary<string, Dictionary<string, int>>();
+        private readonly Dictionary<string, Dictionary<string, int>> _buff = new Dictionary<string, Dictionary<string, int>>();
         
         public void PrintAbilities ()
         {
             Console.WriteLine(" Count |Ability");
             Console.WriteLine("-------+-------------------------");
-            foreach (var kvp in _ability.OrderBy(kvp => -kvp.Value))
-                Console.WriteLine("{0,6} | {1}", kvp.Value, kvp.Key);
+            PrintDict(_ability);
             Console.WriteLine("-------+-------------------------");
         }
         
@@ -69,9 +71,20 @@ namespace RetRotationSim
         {
             Console.WriteLine(" Count |Buff Stats");
             Console.WriteLine("-------+-------------------------");
-            foreach (var kvp in _buff.OrderBy(kvp => -kvp.Value))
-                Console.WriteLine("{0,6} | {1}", kvp.Value, kvp.Key);
+            PrintDict(_buff);
             Console.WriteLine("-------+-------------------------");
+        }
+        
+        private static void PrintDict (Dictionary<string, Dictionary<string, int>> dict)
+        {
+            foreach (var kvp in dict.OrderBy(v => -v.Value[""]))
+            {
+                int count = kvp.Value[""];
+                Console.WriteLine("{0,6} | {1}", count, kvp.Key);
+                foreach (var detail in kvp.Value.OrderBy(v => -v.Value).Where(v => v.Key != ""))
+                    if (detail.Value != count)
+                        Console.WriteLine("       | {0,6} ({1:00.0%}) {2}", detail.Value, detail.Value / (float)count, detail.Key);
+            }
         }
         
         public void Print ()
@@ -93,26 +106,43 @@ namespace RetRotationSim
         private void OnActivate (Buff buff)
         {
             Record(_buff, buff.Name);
-            Record(_buff, buff.Name + " Gained");
+            Record(_buff, buff.Name, "Gained");
         }
         
         private void OnRefresh (Buff buff, TimeSpan remaining)
         {
             Record(_buff, buff.Name);
-            Record(_buff, buff.Name + " Refreshed");
+            Record(_buff, buff.Name, "Refreshed");
+        }
+        
+        private void OnExpire (Buff buff)
+        {
+            Record(_buff, buff.Name, "Expired");
         }
         
         private void OnCancel (Buff buff, TimeSpan remaingin)
         {
-            Record(_buff, buff.Name + " Canceled");
+            Record(_buff, buff.Name, "Canceled");
         }
         
-        private static void Record (Dictionary<string, int> dict, string name)
+        private void OnTick (Buff buff)
         {
-            int count = 0;
-            dict.TryGetValue(name, out count);
-            ++count;
-            dict[name] = count;
+            Record(_buff, buff.Name, "Ticked");
+        }
+        
+        private static void Record (Dictionary<string, Dictionary<string, int>> dict, string name, string type = "")
+        {
+            Dictionary<string, int> map;
+            if (!dict.TryGetValue(name, out map))
+            {
+                map = new Dictionary<string, int>();
+                map[""] = 0;
+                dict[name] = map;
+            }
+            
+            int count;
+            map.TryGetValue(type, out count);
+            map[type] = ++count;
         }
     }
 }

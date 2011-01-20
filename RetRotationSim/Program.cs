@@ -20,7 +20,7 @@ namespace RetRotationSim
             sim.Has4pPvp = false;
             sim.HasConsecrationGlyph = false;
             
-            sim.Rotation = PickAbility6sRefresh;
+            sim.OnEvent += PickAbility6sRefresh;
             
             sim.Random = new Random(0); // same sequence all the time
             
@@ -34,6 +34,11 @@ namespace RetRotationSim
             
             Console.Write("Press any key to continue . . . ");
             Console.ReadKey(true);
+        }
+        
+        private static void SpamCS (Simulator sim)
+        {
+            sim.Cast("Crusader Strike");
         }
         
         private static void PickAbility6sRefresh (Simulator sim)

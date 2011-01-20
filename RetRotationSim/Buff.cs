@@ -36,6 +36,10 @@ namespace RetRotationSim
         public int MaxStacks { get { return Impl.MaxStacks; } }
         public int Stacks { get { return Impl.Stacks; } }
         
+        public TimeSpan TickPeriod { get { return Impl.TickPeriod; } }
+        public bool IsPeriodic { get { return Impl.IsPeriodic; } }
+        public TimeSpan NextTick { get { return Impl.NextTick; } }
+        
         public event Action<Buff> OnActivate
         {
             add { Impl.OnActivate += value; }
@@ -48,10 +52,22 @@ namespace RetRotationSim
             remove { Impl.OnRefresh -= value; }
         }
         
+        public event Action<Buff> OnExpire
+        {
+            add { Impl.OnExpire += value; }
+            remove { Impl.OnExpire -= value; }
+        }
+        
         public event Action<Buff, TimeSpan> OnCancel
         {
             add { Impl.OnCancel += value; }
             remove { Impl.OnCancel -= value; }
+        }
+        
+        public event Action<Buff> OnTick
+        {
+            add { Impl.OnTick += value; }
+            remove { Impl.OnTick -= value; }
         }
         
         public bool Cancel ()
@@ -100,10 +116,10 @@ namespace RetRotationSim
         public bool IsActive { get { return Expires > Sim.Time; } }
         
         public int MaxStacks { get; private set; }
-        public int Stacks { get; private set; } // not set to zero once the buff expires or is canceled
+        public int Stacks { get; private set; }
         
         private readonly Func<TimeSpan> _tickPeriod;
-        public TimeSpan TickPeriod { get { return _tickPeriod != null ? _tickPeriod() : TimeSpan.MaxValue; } }
+        public TimeSpan TickPeriod { get { return _tickPeriod(); } }
         
         public bool IsPeriodic { get { return _tickPeriod != null; } }
         public TimeSpan NextTick { get; private set; }
@@ -111,6 +127,7 @@ namespace RetRotationSim
         public event Action<Buff> OnActivate = delegate { };
         public event Action<Buff, TimeSpan> OnRefresh = delegate { };
         public event Action<Buff, TimeSpan> OnCancel = delegate { };
+        public event Action<Buff> OnExpire = delegate { };
         
         public event Action<Buff> OnTick = delegate { };
         
@@ -118,33 +135,62 @@ namespace RetRotationSim
         {
             var remaining = Remaining;
             
+            // Expire the buff if there's no overlap but it hasn't yet been expired
+            if (Expires == Sim.Time && Stacks > 0)
+                Expire();
+            
             Expires = Sim.Time + Duration;
             
             if (remaining > TimeSpan.Zero)
             {
                 Stacks = Math.Min(Stacks + 1, MaxStacks);
-                // TODO reset tick timer if it doesn't roll?
                 OnRefresh(this.Buff, remaining);
+                
+                // TODO reset tick timer if it doesn't roll?
             }
             else
             {
                 Stacks = 1;
-                // TODO handle things that tick immediatly?
-                NextTick = Sim.Time + TickPeriod;
                 OnActivate(this.Buff);
+                
+                if (IsPeriodic)
+                {
+                    NextTick = Sim.Time;
+                    // TODO handle things that tick immediatly?
+                    ScheduleTick();
+                }
+            }
+            
+            if (Expires > Sim.Time)
+                Sim.AddEvent(Expires, Expire);
+            else
+                Stacks = 0; // expires immediatly
+        }
+        
+        private void Expire ()
+        {
+            if (Expires != Sim.Time)
+                return; // was refreshed
+            
+            OnExpire(Buff);
+            Stacks = 0;
+        }
+        
+        private void ScheduleTick ()
+        {
+            var next = NextTick + TickPeriod;
+            
+            if (next <= Expires)
+            {
+                NextTick = next;
+                Sim.AddEvent(NextTick, Tick);
             }
         }
         
-        public void Update ()
+        private void Tick ()
         {
-            if (!IsPeriodic)
-                return;
-            
-            while (NextTick <= Sim.Time && NextTick <= Expires)
-            {
-                OnTick(this.Buff);
-                NextTick += TickPeriod;
-            }
+            OnTick(Buff);
+            ScheduleTick();
         }
         
         public bool Cancel ()
@@ -156,6 +202,7 @@ namespace RetRotationSim
             
             Expires = Sim.Time;
             OnCancel(this.Buff, remaining);
+            Stacks = 0;
             return true;
         }
     }

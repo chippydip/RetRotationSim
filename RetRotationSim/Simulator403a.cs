@@ -14,6 +14,13 @@ namespace RetRotationSim
     {
         public Simulator403a ()
         {
+            /*
+        }
+        
+        protected override void Init ()
+        {
+            base.Init();
+            */
             // Buffs
             BuffImpl b;
             b = new BuffImpl(this, "The Art of War", () => TimeSpan.FromSeconds(15));
@@ -34,10 +41,18 @@ namespace RetRotationSim
             b = new BuffImpl(this, "Divine Purpose", () => TimeSpan.Zero);
             AddBuff(b);
             
+            b = new BuffImpl(this, "Censure", () => TimeSpan.FromSeconds(15),
+                             maxStack:5,
+                             tickPeriod:() => TimeSpan.FromSeconds(3 / SpellHaste));
+            AddBuff(b);
+            
             // Auto Attacks
             MainHand = new AutoAttack(this, () => TimeSpan.FromSeconds(WeaponSpeed));
             MainHand.OnSwing += () =>
             {
+                // Censure
+                BuffImpl("Censure").Activate();
+                
                 // Art of War
                 if (Random.NextDouble() < 0.2)
                     BuffImpl("The Art of War").Activate();

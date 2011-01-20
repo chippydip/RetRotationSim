@@ -56,6 +56,12 @@ namespace RetRotationSim
             }
         }
         
+        public void Reset ()
+        {
+            _ability.Clear();
+            _buff.Clear();
+        }
+        
         private readonly Dictionary<string, Dictionary<string, int>> _ability = new Dictionary<string, Dictionary<string, int>>();
         private readonly Dictionary<string, Dictionary<string, int>> _buff = new Dictionary<string, Dictionary<string, int>>();
         

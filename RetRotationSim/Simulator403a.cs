@@ -14,13 +14,15 @@ namespace RetRotationSim
     {
         public Simulator403a ()
         {
-            /*
+            InitBuffs();
+            InitWeapon();
+            InitAbilities();
         }
         
-        protected override void Init ()
+        public override int EffectiveHolyPower { get { return Buff("Hand of Light").IsActive ? 3 : base.EffectiveHolyPower; } }
+        
+        private void InitBuffs ()
         {
-            base.Init();
-            */
             // Buffs
             BuffImpl b;
             b = new BuffImpl(this, "The Art of War", () => TimeSpan.FromSeconds(15));
@@ -46,10 +48,24 @@ namespace RetRotationSim
                              tickPeriod:() => TimeSpan.FromSeconds(3 / SpellHaste));
             AddBuff(b);
             
+            b = new BuffImpl(this, "Seal of Truth", () => TimeSpan.Zero);
+            AddBuff(b);
+            
+            b = new BuffImpl(this, "Seals of Command", () => TimeSpan.Zero);
+            AddBuff(b);
+        }
+        
+        private void InitWeapon ()
+        {
             // Auto Attacks
             MainHand = new AutoAttack(this, () => TimeSpan.FromSeconds(WeaponSpeed));
             MainHand.OnSwing += () =>
             {
+                // Seals of Command
+                BuffImpl("Seals of Command").Activate();
+                
+                ProcSoT(); // before Censure application
+                
                 // Censure
                 BuffImpl("Censure").Activate();
                 
@@ -61,7 +77,10 @@ namespace RetRotationSim
                 if (Random.NextDouble() < Mastery)
                     BuffImpl("Hand of Light").Activate();
             };
-            
+        }
+        
+        private void InitAbilities ()
+        {
             // Abilities
             Ability a;
             
@@ -101,6 +120,7 @@ namespace RetRotationSim
             {
                 UsedHolyPowerAbility(abil);
                 ProcDivinePurpose();
+                ProcSoT();
             };
             AddAbility(a);
             
@@ -109,6 +129,7 @@ namespace RetRotationSim
             a.OnCast += (_) =>
             {
                 HolyPower = Math.Min(HolyPower + 1, 3);
+                ProcSoT();
             };
             AddAbility(a);
             
@@ -133,6 +154,18 @@ namespace RetRotationSim
             AddAbility(a);
         }
         
+        private void ProcSoT ()
+        {
+            if (Buff("Censure").IsActive)
+            {
+                // Seals of Command
+                BuffImpl("Seals of Command").Activate();
+                
+                // Seal of Truth
+                BuffImpl("Seal of Truth").Activate();
+            }
+        }
+        
         private void ProcDivinePurpose ()
         {
             if (Random.NextDouble() < 0.4)
@@ -144,8 +177,6 @@ namespace RetRotationSim
                     // TODO RecordAttack("Divine Purpose Wasted");
             }
         }
-        
-        public override int EffectiveHolyPower { get { return Buff("Hand of Light").IsActive ? 3 : base.EffectiveHolyPower; } }
         
         private void UsedHolyPowerAbility (Ability abil)
         {

@@ -78,20 +78,20 @@ namespace RetRotationSim
     
     public class BuffImpl
     {
-        public BuffImpl (Simulator sim, string name, Func<TimeSpan> duration,
+        public BuffImpl (Simulator sim, string name, 
+                         Func<TimeSpan> duration = null,
                          int maxStack = 1,
                          Func<TimeSpan> tickPeriod = null)
         {
             Contract.Requires(sim != null);
             Contract.Requires(name != null);
-            Contract.Requires(duration != null);
             Contract.Requires(maxStack >= 1);
             
             Buff = new Buff(this);
             
             Sim = sim;
             Name = name;
-            _duration = duration;
+            _duration = duration ?? (() => TimeSpan.Zero);
             
             MaxStacks = maxStack;
             
@@ -107,8 +107,6 @@ namespace RetRotationSim
         public TimeSpan Expires { get; private set; }
         
         public TimeSpan Remaining { get { return Expires - Sim.Time; } }
-        
-        //public TimeSpan NextTick { get; private set; }
         
         private readonly Func<TimeSpan> _duration;
         public TimeSpan Duration { get { return _duration(); } }
@@ -130,6 +128,16 @@ namespace RetRotationSim
         public event Action<Buff> OnExpire = delegate { };
         
         public event Action<Buff> OnTick = delegate { };
+        
+        public void Reset ()
+        {
+            if (Sim.IsRunning)
+                return;
+            
+            Expires = TimeSpan.Zero;
+            Stacks = 0;
+            NextTick = TimeSpan.Zero;
+        }
         
         public void Activate ()
         {

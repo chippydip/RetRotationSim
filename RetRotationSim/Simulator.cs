@@ -15,27 +15,6 @@ namespace RetRotationSim
     /// </summary>
     public abstract class Simulator
     {
-        public sealed class Event : IComparable<Event>
-        {
-            public TimeSpan Time { get; private set; }
-            public Action Action { get; private set; }
-            
-            public Event (TimeSpan time, Action action)
-            {
-                Contract.Requires(time >= TimeSpan.Zero);
-                Contract.Requires(action != null);
-                
-                Time = time;
-                Action = action;
-            }
-            
-            public int CompareTo (Event other)
-            {
-                // Sort events from highest to lowest (heap returns last to first)
-                return other.Time.CompareTo(Time);
-            }
-        }
-        
         private readonly IPriorityQueue<Event> _events = new Heap<Event>();
         
         public Simulator ()
@@ -45,6 +24,8 @@ namespace RetRotationSim
             Mastery = 0.08;
             
             Random = new Random();
+            
+            OnEvent = delegate { };
         }
         
         // User settings
@@ -55,7 +36,7 @@ namespace RetRotationSim
         public bool Has4pPvp { get; set; }
         public bool HasConsecrationGlyph { get; set; }
         
-        public event Action<Simulator> OnEvent = delegate { };
+        public Action<Simulator> OnEvent { get; set; }
         
         public Random Random { get; set; }
         
@@ -68,7 +49,13 @@ namespace RetRotationSim
         
         public AutoAttack MainHand { get; protected set; }
         
-        public TimeSpan TotalRuntime { get; protected set; }
+        public virtual int EffectiveHolyPower { get { return Math.Min(3, HolyPower); } }
+        public bool IsHpAbilityUsable { get { return EffectiveHolyPower > 0; } }
+        public bool HasMaxHolyPower { get { return EffectiveHolyPower >= 3; } }
+        
+        public bool IsRunning { get; private set; }
+        
+        protected TimeSpan SpellGcd { get { return TimeSpan.FromSeconds(1.5 / SpellHaste); } }
         
         // Methods
         public void AddEvent (TimeSpan time, Action action)
@@ -81,44 +68,46 @@ namespace RetRotationSim
         
         public void Run (TimeSpan fightDuration)
         {
-            Time = TimeSpan.Zero;
-            
-            Init();
+            IsRunning = true;
+            OnEvent(this);
             
             while (_events.Count > 0)
             {
                 Event next = _events.Pop();
-                
                 if (next.Time >= fightDuration)
                     break;
                 
                 Time = next.Time;
-                
                 next.Action();
-                
                 OnEvent(this);
             }
             
             Time = fightDuration;
             
-            TotalRuntime += fightDuration;
+            IsRunning = false;
+            Reset();
         }
         
-        protected virtual void Init ()
+        private void Reset ()
         {
-            MainHand.Start();
-        }
-        
-        public void Reset ()
-        {
-            TotalRuntime = TimeSpan.Zero;
-            
-            _buffImpl.Clear();
-            _buff.Clear();
-            _ability.Clear();
-            
+            // Clear the event queue
             _events.Clear();
+            
+            // Reset Buffs
+            foreach (var buff in _buffImpl.Values)
+                buff.Reset();
+            
+            // Reset Weapon
+            MainHand.Reset();
+            
+            // Reset Abilities
+            foreach (var abil in _ability.Values)
+                abil.Reset();
+            
+            // Reset the Simulator
+            GcdDone = TimeSpan.Zero;
             Time = TimeSpan.Zero;
+            HolyPower = 0;
         }
         
         private readonly Dictionary<string, BuffImpl> _buffImpl = new Dictionary<string, BuffImpl>();
@@ -166,12 +155,6 @@ namespace RetRotationSim
             };
         }
         
-        public virtual int EffectiveHolyPower { get { return Math.Min(3, HolyPower); } }
-        
-        public bool IsHpAbilityUsable { get { return EffectiveHolyPower > 0; } }
-        
-        public bool HasMaxHolyPower { get { return EffectiveHolyPower >= 3; } }
-        
         public bool Cast (string name)
         {
             Contract.Requires(name != null);
@@ -180,6 +163,25 @@ namespace RetRotationSim
             return Ability(name).Cast();
         }
         
-        protected TimeSpan SpellGcd { get { return TimeSpan.FromSeconds(1.5 / SpellHaste); } }
+        public sealed class Event : IComparable<Event>
+        {
+            public TimeSpan Time { get; private set; }
+            public Action Action { get; private set; }
+            
+            public Event (TimeSpan time, Action action)
+            {
+                Contract.Requires(time >= TimeSpan.Zero);
+                Contract.Requires(action != null);
+                
+                Time = time;
+                Action = action;
+            }
+            
+            public int CompareTo (Event other)
+            {
+                // Sort events from highest to lowest (heap returns last to first)
+                return other.Time.CompareTo(Time);
+            }
+        }
     }
 }

@@ -12,6 +12,7 @@ namespace RetRotationSim
         public static void Main(string[] args)
         {
             Simulator sim = new Simulator403a();
+            
             double haste = 1;
             sim.WeaponSpeed = 3.6 / 1.09 / 1.1 / haste;
             sim.SpellHaste = 1.09 * 1.05 * haste;
@@ -20,29 +21,28 @@ namespace RetRotationSim
             sim.Has4pPvp = false;
             sim.HasConsecrationGlyph = false;
             
-            sim.OnEvent += PickAbility6sRefresh;
-            
-            sim.Random = new Random(0); // same sequence all the time
-            
+            sim.OnEvent = PickAbility6sRefresh;
             var recount = new Recount(sim);
             
+            sim.Random = new Random(0); // same sequence all the time
             sim.Run(TimeSpan.FromMinutes(600));
-            
             recount.Print();
             
-            //PrintResult(sim);
+            recount.Reset();
+            
+            // Run again to make sure we get the same results
+            //sim.Random = new Random(0);
+            //sim.Run(TimeSpan.FromMinutes(600));
+            //recount.Print();
             
             Console.Write("Press any key to continue . . . ");
             Console.ReadKey(true);
         }
         
-        private static void SpamCS (Simulator sim)
-        {
-            sim.Cast("Crusader Strike");
-        }
-        
         private static void PickAbility6sRefresh (Simulator sim)
         {
+            sim.MainHand.Start();
+            
             var inqRemaining = sim.Buff("Inquisition").Remaining;
             
             // Inquisition
@@ -68,6 +68,9 @@ namespace RetRotationSim
         
         private static void PickAbility3sRefresh (Simulator sim)
         {
+            if (!sim.MainHand.IsAttacking)
+                sim.MainHand.Start();
+            
             var inqRemaining = sim.Buff("Inquisition").Remaining;
             
             // Inquisition

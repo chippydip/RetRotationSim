@@ -33,8 +33,20 @@ namespace RetRotationSim
         
         public event Action OnSwing = delegate { };
         
+        public void Reset ()
+        {
+            if (Sim.IsRunning)
+                return;
+            
+            IsAttacking = false;
+            NextSwing = TimeSpan.Zero;
+        }
+        
         public void Start ()
         {
+            if (IsAttacking)
+                return;
+            
             IsAttacking = true;
             
             // If NextSwing == Sim.Time we can't tell if the event has fired yet

@@ -45,6 +45,14 @@ namespace RetRotationSim
         
         public event Action<Ability> OnCast = delegate { };
         
+        public void Reset ()
+        {
+            if (Sim.IsRunning)
+                return;
+            
+            Ready = TimeSpan.Zero;
+        }
+        
         public bool Cast ()
         {
             if (Sim.IsGcd || Ready > Sim.Time || !IsUsable)
@@ -62,7 +70,7 @@ namespace RetRotationSim
         
         private void AbilityReady ()
         {
-            // 
+            // empty
         }
     }
 }

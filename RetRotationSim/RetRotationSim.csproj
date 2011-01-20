@@ -48,7 +48,6 @@
     <Compile Include="Ability.cs" />
     <Compile Include="AutoAttack.cs" />
     <Compile Include="Buff.cs" />
-    <Compile Include="Collections\ComparisonComparer.cs" />
     <Compile Include="Collections\Heap.cs" />
     <Compile Include="Collections\IPriorityQueue.cs" />
     <Compile Include="CombatLogEvent.cs" />

@@ -54,8 +54,14 @@ namespace RetRotationSim
             b = new Buff(this, Secret, "Seals of Command", () => TimeSpan.Zero);
             AddBuff(b);
             
-            b = new Buff(this, Secret, "Consecration", () => TimeSpan.FromSeconds(10),
+            b = new Buff(this, Secret, "Consecration", () => TimeSpan.FromSeconds(HasConsecrationGlyph ? 12 : 10),
                          tickPeriod:() => TimeSpan.FromSeconds(1 / SpellHaste));
+            AddBuff(b);
+            
+            b = new Buff(this, Secret, "Avenging Wrath", () => TimeSpan.FromSeconds(20));
+            AddBuff(b);
+            
+            b = new Buff(this, Secret, "Zealotry", () => TimeSpan.FromSeconds(20));
             AddBuff(b);
         }
         
@@ -111,7 +117,7 @@ namespace RetRotationSim
             a = new Ability(this, "Hammer of Wrath",
                             cooldown:() => TimeSpan.FromSeconds(6),
                             gcd:() => SpellGcd,
-                            isUsable:() => false); // TODO fix this
+                            isUsable:() => Buff("Avenging Wrath").IsActive || TargetHealth < 0.2);
             a.AfterCast += (_) =>
             {
                 ProcDivinePurpose();
@@ -132,7 +138,7 @@ namespace RetRotationSim
                             cooldown:() => TimeSpan.FromSeconds(4.5 / SpellHaste));
             a.AfterCast += (_) =>
             {
-                HolyPower = Math.Min(HolyPower + 1, 3);
+                HolyPower = Math.Min(HolyPower + (Buff("Zealotry").IsActive ? 3 : 1), 3);
                 ProcSoT();
             };
             AddAbility(a);
@@ -158,6 +164,25 @@ namespace RetRotationSim
             a.AfterCast += (_) =>
             {
                 Buff("Consecration").Activate(Secret);
+            };
+            AddAbility(a);
+            
+            a = new Ability(this, "Avenging Wrath",
+                            cooldown:() => TimeSpan.FromSeconds(120),
+                            gcd:() => TimeSpan.Zero);
+            a.AfterCast += (_) =>
+            {
+                Buff("Avenging Wrath").Activate(Secret);
+            };
+            AddAbility(a);
+            
+            a = new Ability(this, "Zealotry",
+                            cooldown:() => TimeSpan.FromSeconds(120),
+                            gcd:() => TimeSpan.Zero,
+                            isUsable:() => EffectiveHolyPower >= 3);
+            a.AfterCast += (_) =>
+            {
+                Buff("Zealotry").Activate(Secret);
             };
             AddAbility(a);
         }

@@ -42,7 +42,14 @@ namespace RetRotationSim
                 RaiseCombatLogEvent(evt);
             };
             
-            // TODO HoW
+            Handlers["Hammer of Wrath"] = (spell) =>
+            {
+                var evt = SpellDamageAttack(3815, 4215, DamageType.Holy, 0.39, 0.117); // TODO are these coefficients correct?
+                evt.Spell = spell;
+                AdjustForInq(evt);
+                CombatTableDoubleRoll(evt, critBoost:0.6);
+                RaiseCombatLogEvent(evt);
+            };
             
             Handlers["Exorcism"] = (spell) =>
             {
@@ -195,7 +202,9 @@ namespace RetRotationSim
         
         private int AdjustForAW (int value)
         {
-            // TODO
+            if (Sim.Buff("Avenging Wrath").IsActive)
+                return (int)(value * 1.2);
+            
             return value;
         }
         

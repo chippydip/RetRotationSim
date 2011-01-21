@@ -28,6 +28,8 @@ namespace RetRotationSim
             OnEvent = delegate { };
             
             Secret = new object();
+            
+            TargetHealth = 1; // TODO improve target health modeling
         }
         
         // User settings
@@ -45,9 +47,10 @@ namespace RetRotationSim
         // Informational properties
         public int HolyPower { get; protected set; }
         
-        public TimeSpan Time { get; protected set; }
-        public TimeSpan GcdDone { get; protected set; }
+        public TimeSpan Time { get; private set; }
+        public TimeSpan GcdDone { get; private set; }
         public bool IsGcd { get { return GcdDone > Time; } }
+        public double TargetHealth { get; private set; }
         
         public AutoAttack MainHand { get; protected set; }
         
@@ -85,11 +88,13 @@ namespace RetRotationSim
                     break;
                 
                 Time = next.Time;
+                TargetHealth = 1 - Time.TotalSeconds / fightDuration.TotalSeconds;
                 next.Action();
                 OnEvent(this);
             }
             
             Time = fightDuration;
+            TargetHealth = 0;
             LeavingCombat(this);
             IsRunning = false;
             
@@ -115,6 +120,7 @@ namespace RetRotationSim
             // Reset the Simulator
             GcdDone = TimeSpan.Zero;
             Time = TimeSpan.Zero;
+            TargetHealth = 1;
             HolyPower = 0;
         }
         

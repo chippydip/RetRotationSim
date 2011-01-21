@@ -21,7 +21,7 @@ namespace RetRotationSim
             sim.Has4pPvp = false;
             sim.HasConsecrationGlyph = false;
             
-            sim.OnEvent = PickAbility3sRefresh;
+            sim.OnEvent = PickAbility6sRefresh;
             DamageCalc calc = new DamageCalc403a(sim);
             calc.Random = new Random(0);
             
@@ -75,7 +75,15 @@ namespace RetRotationSim
             if (sim.HasMaxHolyPower && inqRemaining < TimeSpan.FromSeconds(6))
                 sim.Cast("Inquisition");
             
-            // TODO HoW
+            // Stacked Cooldowns
+            if (sim.HasMaxHolyPower)
+            {
+                sim.Cast("Avenging Wrath");
+                sim.Cast("Zealotry");
+            }
+            
+            // HoW
+            sim.Cast("Hammer of Wrath");
             
             // Exorcism
             if (sim.Buff("The Art of War").IsActive)

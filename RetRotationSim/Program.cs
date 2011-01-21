@@ -78,6 +78,7 @@ namespace RetRotationSim
             // Stacked Cooldowns
             if (sim.HasMaxHolyPower)
             {
+                sim.Cast("Bloodlust");
                 sim.Cast("Avenging Wrath");
                 sim.Cast("Zealotry");
             }

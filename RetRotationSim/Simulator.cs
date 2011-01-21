@@ -30,11 +30,31 @@ namespace RetRotationSim
             Secret = new object();
             
             TargetHealth = 1; // TODO improve target health modeling
+            
+            AddBuff(new Buff(this, Secret, "Bloodlust", () => TimeSpan.FromSeconds(40)));
+            
+            Ability a = new Ability(this, "Bloodlust",
+                                   cooldown:() => TimeSpan.FromSeconds(600),
+                                   gcd:() => TimeSpan.Zero);
+            a.AfterCast += (_) => Buff("Bloodlust").Activate(Secret);
+            AddAbility(a);
         }
         
         // User settings
-        public double WeaponSpeed { get; set; }
-        public double SpellHaste { get; set; }
+        private double _weaponSpeed;
+        public double WeaponSpeed
+        {
+            get { return Buff("Bloodlust").IsActive ? _weaponSpeed / 1.4 : _weaponSpeed; }
+            set { _weaponSpeed = value; }
+        }
+        
+        private double _spellHaste;
+        public double SpellHaste
+        {
+            get { return Buff("Bloodlust").IsActive ? _spellHaste * 1.4 : _spellHaste; }
+            set { _spellHaste = value; }
+        }
+        
         public double Mastery { get; set; }
         public bool Has4pT11 { get; set; }
         public bool Has4pPvp { get; set; }
@@ -63,7 +83,7 @@ namespace RetRotationSim
         public event Action<Simulator> EnteringCombat = delegate { };
         public event Action<Simulator> LeavingCombat = delegate { };
         
-        protected TimeSpan SpellGcd { get { return TimeSpan.FromSeconds(1.5 / SpellHaste); } }
+        protected TimeSpan SpellGcd { get { return TimeSpan.FromSeconds(Math.Max(1, 1.5 / SpellHaste)); } }
         protected object Secret { get; private set; }
         
         // Methods

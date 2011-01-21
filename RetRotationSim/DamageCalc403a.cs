@@ -57,7 +57,7 @@ namespace RetRotationSim
                 if (Sim.Buff("The Art of War").IsActive)
                     scale += 1;
                 
-                var evt = SpellDamageAttack(2591, 2891, DamageType.Holy, 0.344); // TODO should this be 0.34?
+                var evt = SpellDamageAttack(2591, 2891, DamageType.Holy, 0.34); // TODO should this be 0.344?
                 evt.Spell = spell;
                 int glyph = (int)(evt.DamageAmount * 0.2 / (1 + MagicalDamageBoost)); // TODO don't calc this here
                 ScaleDamage(evt, scale); // Blazing Light + Art of War
@@ -69,7 +69,7 @@ namespace RetRotationSim
             
             Handlers["Judgement"] = (spell) =>
             {
-                var evt = SpellDamageAttack(1, DamageType.Holy, 0.142, 0.223);
+                var evt = SpellDamageAttack(1, DamageType.Holy, 0.1421, 0.2229);
                 evt.Spell = spell;
                 ScaleDamage(evt, 1.2); // 2H spec
                 ScaleDamage(evt, (1 + 0.1 * Sim.Buff("Censure").Stacks));
@@ -80,7 +80,7 @@ namespace RetRotationSim
             
             Handlers["Holy Wrath"] = (spell) =>
             {
-                var evt = SpellDamageAttack(2435, DamageType.Holy, 0, 0.61); // TODO is base 2402?
+                var evt = SpellDamageAttack(2402, DamageType.Holy, 0, 0.61); // TODO is base 2435?
                 evt.Spell = spell;
                 AdjustForInq(evt);
                 CombatTableSpellRoll(evt);
@@ -98,7 +98,7 @@ namespace RetRotationSim
             
             Handlers["T:Censure"] = (spell) =>
             {
-                var evt = SpellDamageAttack(0, DamageType.Holy, 0.0193, 0.01); // TODO should AP be 0.0192?
+                var evt = SpellDamageAttack(0, DamageType.Holy, 0.0192, 0.01); // TODO should AP be 0.0193? Exemplar: 0.033, 0.017
                 evt.Spell = spell;
                 ScaleDamage(evt, (1 + 0.3 + 0.12)); // Inquiry of Faith + Seals of the Pure
                 ScaleDamage(evt, Sim.Buff("Censure").Stacks);

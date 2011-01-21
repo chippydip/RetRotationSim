@@ -13,19 +13,46 @@ namespace RetRotationSim
         {
             Simulator sim = new Simulator403a();
             
-            double haste = 1 + (1812 + 65) / 12805.7;
-            sim.WeaponSpeed = 3.8 / 1.09 / 1.1 / haste;
-            sim.SpellHaste = 1.09 * 1.05 * haste;
-            sim.Mastery = 0.08;
-            sim.Has4pT11 = false;
-            sim.Has4pPvp = false;
-            sim.HasConsecrationGlyph = false;
-            
             sim.OnEvent = PickAbility6sRefresh;
             DamageCalc calc = new DamageCalc403a(sim);
             calc.Random = new Random(0);
             
-            calc.MainHandSpeed = 3.8;
+            SetRedcape513(calc);
+            //SetExemplar107(calc);
+            
+            var recount = new Recount(calc);
+            
+            sim.Random = new Random(0); // same sequence all the time
+            sim.Run(TimeSpan.FromMinutes(600));
+            recount.Print();
+            
+            recount.Reset();
+            
+            // Run again to make sure we get the same results
+            //sim.Random = new Random(0);
+            //sim.Run(TimeSpan.FromMinutes(600));
+            //recount.Print();
+            
+            Console.Write("Press any key to continue . . . ");
+            Console.ReadKey(true);
+        }
+        
+        private static void SetRedcape513 (DamageCalc calc)
+        {
+            double weaponSpeed = 3.8;
+            int hasteRating = 1812 + 65;
+            
+            double haste = 1 + hasteRating / 12805.7;
+            
+            calc.Sim.WeaponSpeed = weaponSpeed / 1.09 / 1.1 / haste;
+            calc.Sim.SpellHaste = 1.09 * 1.05 * haste;
+            calc.Sim.Mastery = 0.1422;
+            
+            calc.Sim.Has4pT11 = true;
+            calc.Sim.Has4pPvp = false;
+            calc.Sim.HasConsecrationGlyph = false;
+            
+            calc.MainHandSpeed = weaponSpeed;
             calc.MainHandMin = 1894;
             calc.MainHandMax = 2843;
             
@@ -47,36 +74,63 @@ namespace RetRotationSim
             calc.PhysicalDamageBoost = 0.0918;
             calc.MagicalDamageBoost = 1.4674 / (1 + 0.3 * 0.98) - 1;
             calc.ArmorReduction = 0.2879;
+        }
+        
+        private static void SetExemplar107 (DamageCalc calc)
+        {
+            double weaponSpeed = 3.6;
             
-            var recount = new Recount(calc);
+            double haste = 1.148;
             
-            sim.Random = new Random(0); // same sequence all the time
-            sim.Run(TimeSpan.FromMinutes(600));
-            recount.Print();
+            calc.Sim.WeaponSpeed = weaponSpeed / 1.09 / 1.1 / haste;
+            calc.Sim.SpellHaste = 1.09 * 1.05 * haste;
+            calc.Sim.Mastery = 0.08 + 0.027;
             
-            recount.Reset();
+            calc.Sim.Has4pT11 = true;
+            calc.Sim.Has4pPvp = false;
+            calc.Sim.HasConsecrationGlyph = false;
             
-            // Run again to make sure we get the same results
-            //sim.Random = new Random(0);
-            //sim.Run(TimeSpan.FromMinutes(600));
-            //recount.Print();
+            calc.MainHandSpeed = weaponSpeed;
+            calc.MainHandMin = 1894;
+            calc.MainHandMax = 2843;
             
-            Console.Write("Press any key to continue . . . ");
-            Console.ReadKey(true);
+            // From Redcape
+            calc.Strength = 5981;
+            calc.Agility = 689;
+            calc.Intellect = 122;
+            
+            calc.AttackPower = 13627;
+            calc.SpellPower = 4804;
+            
+            calc.MeleeCritChance = 0.147;
+            calc.SpellCritChance = 0.143;
+            //Attack Speed
+            calc.MeleeMissChance = 0;
+            calc.MeleeDodgeChance = 0;
+            calc.SpellMissChance = 0;
+            //Mastery
+            calc.PhysicalDamageBoost = 0.0918;
+            calc.MagicalDamageBoost = 1.4674 / (1 + 0.3 * 0.98) - 1;
+            calc.ArmorReduction = 0.2879;
         }
         
         private static void PickAbility6sRefresh (Simulator sim)
         {
+            // /startattack
             sim.MainHand.Start();
             
-            var inqRemaining = sim.Buff("Inquisition").Remaining;
+            // Cooldowns when ready
+            sim.Cast("Bloodlust");
+            sim.Cast("Avenging Wrath");
+            sim.Cast("Zealotry");
             
             // Inquisition
+            var inqRemaining = sim.Buff("Inquisition").Remaining;
             if (sim.HasMaxHolyPower && inqRemaining < TimeSpan.FromSeconds(6))
                 sim.Cast("Inquisition");
             
             // Stacked Cooldowns
-            if (sim.HasMaxHolyPower)
+            if (sim.Ability("Zealotry").IsUsable)
             {
                 sim.Cast("Bloodlust");
                 sim.Cast("Avenging Wrath");

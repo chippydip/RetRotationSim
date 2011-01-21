@@ -84,8 +84,8 @@ namespace RetRotationSim
         
         protected T SwitchOnHp<T> (T value3, T value2, T value1, T value0 = default(T))
         {
-            if (Sim.EffectiveHolyPower != 3)
-                Console.WriteLine("Used HP @ {0}", Sim.EffectiveHolyPower);
+            //if (Sim.EffectiveHolyPower != 3)
+            //    Console.WriteLine("Used HP @ {0}", Sim.EffectiveHolyPower);
             
             switch (Sim.EffectiveHolyPower)
             {
@@ -137,7 +137,7 @@ namespace RetRotationSim
             
             roll -= Math.Max(0, dodgeBoost + MeleeDodgeChance);
             // TODO Parry?
-            if (roll < 0.2) // Glancing Blow chance on +3 mob
+            if (roll < 0.24) // Glancing Blow chance on +3 mob
             {
                 // glancing blow
                 evt.DamageAmount = (int)(evt.DamageAmount * 0.75);
@@ -145,7 +145,7 @@ namespace RetRotationSim
                 return;
             }
             
-            roll -= 0.2; // Glancing Blow chance on +3 mob
+            roll -= 0.24; // Glancing Blow chance on +3 mob
             // TODO Block?
             if (roll < critBoost + MeleeCritChance)
             {

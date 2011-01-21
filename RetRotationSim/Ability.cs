@@ -32,7 +32,7 @@ namespace RetRotationSim
         public TimeSpan Gcd { get { return _gcd(); } }
         
         private readonly Func<bool> _isUsable;
-        public bool IsUsable { get { return _isUsable(); } }
+        public bool IsUsable { get { return Sim.Time >= Ready && _isUsable(); } }
         
         public void Reset ()
         {
@@ -44,7 +44,7 @@ namespace RetRotationSim
         
         public bool Cast ()
         {
-            if (Sim.IsGcd || Ready > Sim.Time || !IsUsable)
+            if (Sim.IsGcd || !IsUsable)
                 return false;
             
             Ready = Sim.Time + Cooldown;

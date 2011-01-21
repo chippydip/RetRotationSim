@@ -29,7 +29,7 @@ namespace RetRotationSim
             
             Secret = new object();
             
-            TargetHealth = 1; // TODO improve target health modeling
+            TargetHealth = 1;
             
             AddBuff(new Buff(this, Secret, "Bloodlust", () => TimeSpan.FromSeconds(40)));
             
@@ -70,7 +70,7 @@ namespace RetRotationSim
         public TimeSpan Time { get; private set; }
         public TimeSpan GcdDone { get; private set; }
         public bool IsGcd { get { return GcdDone > Time; } }
-        public double TargetHealth { get; private set; }
+        public double TargetHealth { get; private set; } // TODO improve target health modeling
         
         public AutoAttack MainHand { get; protected set; }
         

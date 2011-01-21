@@ -49,9 +49,12 @@ namespace RetRotationSim
         private readonly Dictionary<string, Dictionary<string, int>> _ability = new Dictionary<string, Dictionary<string, int>>();
         private readonly Dictionary<string, Dictionary<string, int>> _buff = new Dictionary<string, Dictionary<string, int>>();
         
-        private readonly Dictionary<string, int> _damage = new Dictionary<string, int>();
+        private readonly Dictionary<string, long> _damage = new Dictionary<string, long>();
         
         private TimeSpan _totalTime;
+        
+        public long TotalDamage { get { return _damage.Values.Sum(); } }
+        public double Dps { get { return TotalDamage / _totalTime.TotalSeconds; } }
         
         public void PrintAbilities ()
         {
@@ -108,11 +111,10 @@ namespace RetRotationSim
         {
             Console.WriteLine(" Damage | Source");
             Console.WriteLine("--------+-------------------------");
-            int total = 0;
+            long total = TotalDamage;
             foreach (var kvp in _damage.OrderBy(v => -v.Value))
             {
-                Console.WriteLine("{0,7} | {1,-20} (avg {2,5})", ShortForm(kvp.Value), kvp.Key, kvp.Value / GetCount(kvp.Key));
-                total += kvp.Value;
+                Console.WriteLine("{0,7} | {1,-18} {2:00.0%} (avg {3,5})", ShortForm(kvp.Value), kvp.Key, kvp.Value / (double)TotalDamage, kvp.Value / GetCount(kvp.Key));
             }
             Console.WriteLine("--------+-------------------------");
             
@@ -166,7 +168,7 @@ namespace RetRotationSim
         {
             string name = evt.Spell != null ? evt.Spell.Name : "Melee";
             
-            int amount;
+            long amount;
             _damage.TryGetValue(name, out amount);
             
             amount += evt.DamageAmount;

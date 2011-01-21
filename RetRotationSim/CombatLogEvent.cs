@@ -20,7 +20,7 @@ namespace RetRotationSim
         //public Unit Source { get; set; }
         //public Unit Target { get; set; }
         
-        public Ability Spell { get; set; }
+        public Spell Spell { get; set; }
         
         public int DamageAmount { get; set; }
         //public int OverkillAmount { get; set; }

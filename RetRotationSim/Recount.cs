@@ -13,38 +13,19 @@ namespace RetRotationSim
     /// </summary>
     public class Recount
     {
-        public Recount (Simulator sim)
+        public Recount (DamageCalc calc)
         {
+            calc.OnCombatLogEvent += OnCombatLogEvent;
+            
+            var sim = calc.Sim;
+            
+            sim.EnteringCombat += EnteringCombat;
+            sim.LeavingCombat += LeavingCombat;
+            
             sim.MainHand.OnSwing += OnMainHandSwing;
             
             foreach (var abil in sim.Abilities)
-            {
                 abil.OnCast += OnCast;
-                /*
-                switch (abil.Name)
-                {
-                    case "Inquisition":
-                        break;
-                    case "Exorcism":
-                        break;
-                    case "Hammer of Wrath":
-                        break;
-                    case "Templar's Verdict":
-                        break;
-                    case "Crusader Strike":
-                        break;
-                    case "Judgement":
-                        break;
-                    case "Holy Wrath":
-                        break;
-                    case "Consecration":
-                        break;
-                    default:
-                        Console.WriteLine("Unexpected Ability: {0}", abil.Name);
-                        break;
-                }
-                */
-            }
             
             foreach (var buff in sim.Buffs)
             {
@@ -60,25 +41,32 @@ namespace RetRotationSim
         {
             _ability.Clear();
             _buff.Clear();
+            
+            _damage.Clear();
+            _totalTime = TimeSpan.Zero;
         }
         
         private readonly Dictionary<string, Dictionary<string, int>> _ability = new Dictionary<string, Dictionary<string, int>>();
         private readonly Dictionary<string, Dictionary<string, int>> _buff = new Dictionary<string, Dictionary<string, int>>();
         
+        private readonly Dictionary<string, int> _damage = new Dictionary<string, int>();
+        
+        private TimeSpan _totalTime;
+        
         public void PrintAbilities ()
         {
-            Console.WriteLine(" Count |Ability");
-            Console.WriteLine("-------+-------------------------");
+            Console.WriteLine(" Count  | Ability");
+            Console.WriteLine("--------+-------------------------");
             PrintDict(_ability);
-            Console.WriteLine("-------+-------------------------");
+            Console.WriteLine("--------+-------------------------");
         }
         
         public void PrintBuffs ()
         {
-            Console.WriteLine(" Count |Buff Stats");
-            Console.WriteLine("-------+-------------------------");
+            Console.WriteLine(" Count  | Buff Stats");
+            Console.WriteLine("--------+-------------------------");
             PrintDict(_buff);
-            Console.WriteLine("-------+-------------------------");
+            Console.WriteLine("--------+-------------------------");
         }
         
         private static void PrintDict (Dictionary<string, Dictionary<string, int>> dict)
@@ -86,17 +74,105 @@ namespace RetRotationSim
             foreach (var kvp in dict.OrderBy(v => -v.Value[""]))
             {
                 int count = kvp.Value[""];
-                Console.WriteLine("{0,6} | {1}", count, kvp.Key);
+                Console.WriteLine("{0,7} | {1}", count, kvp.Key);
                 foreach (var detail in kvp.Value.OrderBy(v => -v.Value).Where(v => v.Key != ""))
-                    if (detail.Value != count)
-                        Console.WriteLine("       | {0,6} ({1:00.0%}) {2}", detail.Value, detail.Value / (float)count, detail.Key);
+                {
+                    bool show = true;
+                    switch (detail.Key)
+                    {
+                        case "Gained":
+                            if (detail.Value == count || detail.Value == 1)
+                                show = false;
+                            break;
+                        case "Refreshed":
+                            if (detail.Value == count - 1)
+                                show = false;
+                            break;
+                        case "Used":
+                            if (detail.Value == count)
+                                show = false;
+                            break;
+                        case "Expired":
+                            show = false; // always the same as Gained
+                            break;
+                        default:
+                            break;
+                    }
+                    if (show)
+                        Console.WriteLine("        | {0,6} ({1:00.0%}) {2}", detail.Value, detail.Value / (float)count, detail.Key);
+                }
             }
+        }
+        
+        public void PrintDamage ()
+        {
+            Console.WriteLine(" Damage | Source");
+            Console.WriteLine("--------+-------------------------");
+            int total = 0;
+            foreach (var kvp in _damage.OrderBy(v => -v.Value))
+            {
+                Console.WriteLine("{0,7} | {1,-20} (avg {2,5})", ShortForm(kvp.Value), kvp.Key, kvp.Value / GetCount(kvp.Key));
+                total += kvp.Value;
+            }
+            Console.WriteLine("--------+-------------------------");
+            
+            Console.WriteLine("Total: {0} ({1:0.0} dps)", ShortForm(total), ShortForm(total / _totalTime.TotalSeconds, 3));
+        }
+        
+        private static string ShortForm (double value, int places = 1)
+        {
+            string format = "N" + places;
+            if (value > 1000000000)
+                return (value * 0.000000001).ToString(format) + 'b';
+            if (value > 1000000)
+                return (value * 0.000001).ToString(format) + 'm';
+            if (value > 1000)
+                return (value * 0.001).ToString(format) + 'k';
+            return value.ToString(format);
+        }
+        
+        private int GetCount (string name)
+        {
+            Dictionary<string, int> map;
+            if (!_ability.TryGetValue(name, out map))
+                if (!_buff.TryGetValue(name, out map))
+                    return 1;
+            
+            int count;
+            if (!map.TryGetValue("Ticked", out count))
+                if (!map.TryGetValue("", out count))
+                    return 1;
+            
+            return count;
         }
         
         public void Print ()
         {
-            PrintAbilities();
             PrintBuffs();
+            PrintAbilities();
+            PrintDamage();
+        }
+        
+        private void EnteringCombat (Simulator sim)
+        {
+        }
+        
+        private void LeavingCombat (Simulator sim)
+        {
+            _totalTime += sim.Time;
+        }
+        
+        private void OnCombatLogEvent (CombatLogEvent evt)
+        {
+            string name = evt.Spell != null ? evt.Spell.Name : "Melee";
+            
+            int amount;
+            _damage.TryGetValue(name, out amount);
+            
+            amount += evt.DamageAmount;
+            
+            if (amount != 0)
+                _damage[name] = amount;
         }
         
         private void OnMainHandSwing ()
@@ -104,7 +180,7 @@ namespace RetRotationSim
             Record(_ability, "Melee");
         }
         
-        private void OnCast (Ability abil)
+        private void OnCast (Spell abil)
         {
             Record(_ability, abil.Name);
         }
@@ -128,10 +204,10 @@ namespace RetRotationSim
         
         private void OnCancel (Buff buff, TimeSpan remaingin)
         {
-            Record(_buff, buff.Name, "Canceled");
+            Record(_buff, buff.Name, "Used");
         }
         
-        private void OnTick (Buff buff)
+        private void OnTick (Spell buff)
         {
             Record(_buff, buff.Name, "Ticked");
         }

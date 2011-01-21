@@ -10,87 +10,19 @@ namespace RetRotationSim
     /// <summary>
     /// Description of Buff.
     /// </summary>
-    public class Buff
+    public sealed class Buff : SimulatorSpell
     {
-        public Buff (BuffImpl impl)
+        public Buff (Simulator sim, object secret, string name,
+                     Func<TimeSpan> duration = null,
+                     int maxStack = 1,
+                     Func<TimeSpan> tickPeriod = null)
+            : base(sim, name)
         {
-            Contract.Requires(impl != null);
-            
-            Impl = impl;
-        }
-        
-        private BuffImpl Impl { get; set; }
-        
-        public string Name { get { return Impl.Name; } }
-        
-        public TimeSpan Expires { get { return Impl.Expires; } }
-        
-        public TimeSpan Remaining { get { return Impl.Remaining; } }
-        
-        //public TimeSpan NextTick { get { return _imp.NextTick; } }
-        
-        public TimeSpan Duration { get { return Impl.Duration; } }
-        
-        public bool IsActive { get { return Impl.IsActive; } }
-        
-        public int MaxStacks { get { return Impl.MaxStacks; } }
-        public int Stacks { get { return Impl.Stacks; } }
-        
-        public TimeSpan TickPeriod { get { return Impl.TickPeriod; } }
-        public bool IsPeriodic { get { return Impl.IsPeriodic; } }
-        public TimeSpan NextTick { get { return Impl.NextTick; } }
-        
-        public event Action<Buff> OnActivate
-        {
-            add { Impl.OnActivate += value; }
-            remove { Impl.OnActivate -= value; }
-        }
-        
-        public event Action<Buff, TimeSpan> OnRefresh
-        {
-            add { Impl.OnRefresh += value; }
-            remove { Impl.OnRefresh -= value; }
-        }
-        
-        public event Action<Buff> OnExpire
-        {
-            add { Impl.OnExpire += value; }
-            remove { Impl.OnExpire -= value; }
-        }
-        
-        public event Action<Buff, TimeSpan> OnCancel
-        {
-            add { Impl.OnCancel += value; }
-            remove { Impl.OnCancel -= value; }
-        }
-        
-        public event Action<Buff> OnTick
-        {
-            add { Impl.OnTick += value; }
-            remove { Impl.OnTick -= value; }
-        }
-        
-        public bool Cancel ()
-        {
-            return Impl.Cancel();
-        }
-    }
-    
-    public class BuffImpl
-    {
-        public BuffImpl (Simulator sim, string name, 
-                         Func<TimeSpan> duration = null,
-                         int maxStack = 1,
-                         Func<TimeSpan> tickPeriod = null)
-        {
-            Contract.Requires(sim != null);
-            Contract.Requires(name != null);
+            Contract.Requires(secret != null);
             Contract.Requires(maxStack >= 1);
             
-            Buff = new Buff(this);
+            _secret = secret;
             
-            Sim = sim;
-            Name = name;
             _duration = duration ?? (() => TimeSpan.Zero);
             
             MaxStacks = maxStack;
@@ -98,11 +30,7 @@ namespace RetRotationSim
             _tickPeriod = tickPeriod;
         }
         
-        public Buff Buff { get; private set; }
-        
-        private Simulator Sim { get; set; }
-        
-        public string Name { get; private set; }
+        private readonly object _secret;
         
         public TimeSpan Expires { get; private set; }
         
@@ -127,20 +55,23 @@ namespace RetRotationSim
         public event Action<Buff, TimeSpan> OnCancel = delegate { };
         public event Action<Buff> OnExpire = delegate { };
         
-        public event Action<Buff> OnTick = delegate { };
-        
         public void Reset ()
         {
             if (Sim.IsRunning)
                 return;
             
+            Expires = Sim.Time;
+            Expire();
+            
             Expires = TimeSpan.Zero;
-            Stacks = 0;
             NextTick = TimeSpan.Zero;
         }
         
-        public void Activate ()
+        public void Activate (object secret)
         {
+            if (_secret != secret)
+                return;
+            
             var remaining = Remaining;
             
             // Expire the buff if there's no overlap but it hasn't yet been expired
@@ -152,14 +83,16 @@ namespace RetRotationSim
             if (remaining > TimeSpan.Zero)
             {
                 Stacks = Math.Min(Stacks + 1, MaxStacks);
-                OnRefresh(this.Buff, remaining);
+                OnRefresh(this, remaining);
+                RaiseCast();
                 
                 // TODO reset tick timer if it doesn't roll?
             }
             else
             {
                 Stacks = 1;
-                OnActivate(this.Buff);
+                OnActivate(this);
+                RaiseCast();
                 
                 if (IsPeriodic)
                 {
@@ -180,7 +113,7 @@ namespace RetRotationSim
             if (Expires != Sim.Time)
                 return; // was refreshed
             
-            OnExpire(Buff);
+            OnExpire(this);
             Stacks = 0;
         }
         
@@ -197,7 +130,7 @@ namespace RetRotationSim
         
         private void Tick ()
         {
-            OnTick(Buff);
+            RaiseTick();
             ScheduleTick();
         }
         
@@ -209,7 +142,7 @@ namespace RetRotationSim
                 return false;
             
             Expires = Sim.Time;
-            OnCancel(this.Buff, remaining);
+            OnCancel(this, remaining);
             Stacks = 0;
             return true;
         }

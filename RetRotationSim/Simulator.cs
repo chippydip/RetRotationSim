@@ -26,6 +26,8 @@ namespace RetRotationSim
             Random = new Random();
             
             OnEvent = delegate { };
+            
+            Secret = new object();
         }
         
         // User settings
@@ -55,7 +57,11 @@ namespace RetRotationSim
         
         public bool IsRunning { get; private set; }
         
+        public event Action<Simulator> EnteringCombat = delegate { };
+        public event Action<Simulator> LeavingCombat = delegate { };
+        
         protected TimeSpan SpellGcd { get { return TimeSpan.FromSeconds(1.5 / SpellHaste); } }
+        protected object Secret { get; private set; }
         
         // Methods
         public void AddEvent (TimeSpan time, Action action)
@@ -69,6 +75,7 @@ namespace RetRotationSim
         public void Run (TimeSpan fightDuration)
         {
             IsRunning = true;
+            EnteringCombat(this);
             OnEvent(this);
             
             while (_events.Count > 0)
@@ -83,8 +90,9 @@ namespace RetRotationSim
             }
             
             Time = fightDuration;
-            
+            LeavingCombat(this);
             IsRunning = false;
+            
             Reset();
         }
         
@@ -94,7 +102,7 @@ namespace RetRotationSim
             _events.Clear();
             
             // Reset Buffs
-            foreach (var buff in _buffImpl.Values)
+            foreach (var buff in _buff.Values)
                 buff.Reset();
             
             // Reset Weapon
@@ -110,19 +118,11 @@ namespace RetRotationSim
             HolyPower = 0;
         }
         
-        private readonly Dictionary<string, BuffImpl> _buffImpl = new Dictionary<string, BuffImpl>();
         private readonly Dictionary<string, Buff> _buff = new Dictionary<string, Buff>();
         private readonly Dictionary<string, Ability> _ability = new Dictionary<string, Ability>();
         
         public IEnumerable<Buff> Buffs { get { return _buff.Values; } }
         public IEnumerable<Ability> Abilities { get { return _ability.Values; } }
-        
-        protected BuffImpl BuffImpl (string name)
-        {
-            Contract.Requires(name != null);
-            
-            return _buffImpl[name];
-        }
         
         public Buff Buff (string name)
         {
@@ -138,10 +138,9 @@ namespace RetRotationSim
             return _ability[name];
         }
         
-        protected void AddBuff (BuffImpl buffImpl)
+        protected void AddBuff (Buff buff)
         {
-            _buffImpl[buffImpl.Name] = buffImpl;
-            _buff[buffImpl.Name] = buffImpl.Buff;
+            _buff[buff.Name] = buff;
         }
         
         protected void AddAbility (Ability abil)
@@ -149,7 +148,7 @@ namespace RetRotationSim
             _ability[abil.Name] = abil;
             abil.OnCast += (ability) =>
             {
-                GcdDone = Time + ability.Gcd;
+                GcdDone = Time + ((Ability)ability).Gcd;
                 if (GcdDone > Time)
                     AddEvent(GcdDone, delegate { });
             };

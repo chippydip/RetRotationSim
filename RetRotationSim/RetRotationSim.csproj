@@ -58,6 +58,7 @@
     <Compile Include="Recount.cs" />
     <Compile Include="Simulator.cs" />
     <Compile Include="Simulator403a.cs" />
+    <Compile Include="Spell.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Collections" />

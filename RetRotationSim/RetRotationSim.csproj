@@ -53,6 +53,7 @@
     <Compile Include="CombatLogEvent.cs" />
     <Compile Include="DamageCalc.cs" />
     <Compile Include="DamageCalc403a.cs" />
+    <Compile Include="DamageCalc406.cs" />
     <Compile Include="Histogram.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -60,6 +61,7 @@
     <Compile Include="Rotation.cs" />
     <Compile Include="Simulator.cs" />
     <Compile Include="Simulator403a.cs" />
+    <Compile Include="Simulator406.cs" />
     <Compile Include="Spell.cs" />
   </ItemGroup>
   <ItemGroup>

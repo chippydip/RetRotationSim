@@ -11,10 +11,10 @@ namespace RetRotationSim
     {
         public static void Main(string[] args)
         {
-            Simulator sim = new Simulator403a();
+            Simulator sim = new Simulator406();
+            DamageCalc calc = new DamageCalc406(sim);
             
             sim.OnEvent = PickAbility6sRefresh;
-            DamageCalc calc = new DamageCalc403a(sim);
             //calc.Random = new Random(0);
             
             SetRedcape513(calc);
@@ -149,7 +149,6 @@ namespace RetRotationSim
             calc.MeleeMissChance = 0;
             calc.MeleeDodgeChance = 0;
             calc.SpellMissChance = 0;
-            //Mastery
             calc.PhysicalDamageBoost = 0.0918;
             calc.MagicalDamageBoost = 1.4674 / (1 + 0.3 * 0.98) - 1;
             calc.ArmorReduction = 0.2879;

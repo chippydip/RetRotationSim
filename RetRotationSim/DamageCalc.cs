@@ -57,7 +57,7 @@ namespace RetRotationSim
         public double MeleeDodgeChance { get; set; }
         public double SpellMissChance { get; set; }
         
-        public double Mastery { get; set; }
+        public double Mastery { get { return Sim.Mastery; } }
         
         public double PhysicalDamageBoost { get; set; }
         public double MagicalDamageBoost { get; set; }

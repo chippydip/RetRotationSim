@@ -11,8 +11,8 @@ namespace RetRotationSim
     /// </summary>
     public sealed class DamageCalc403a : DamageCalc
     {
-        public DamageCalc403a (Simulator sim)
-            : base(sim)
+        public DamageCalc403a ()
+            : base(new Simulator403a())
         {
             Handlers["MH:Melee"] = (_) =>
             {

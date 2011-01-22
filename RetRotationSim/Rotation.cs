@@ -13,7 +13,13 @@ namespace RetRotationSim
     {
         public Rotation ()
         {
+            InquisitionOverlap = 6;
+            MinInquisitionHp = 3;
         }
+        
+        public double InquisitionOverlap { get; set; }
+        
+        public int MinInquisitionHp { get; set; }
         
         public void OnUpdate (Simulator sim)
         {
@@ -27,7 +33,10 @@ namespace RetRotationSim
             
             // Inquisition
             var inqRemaining = sim.Buff("Inquisition").Remaining;
-            if (sim.HasMaxHolyPower && inqRemaining < TimeSpan.FromSeconds(6))
+            if (sim.HasMaxHolyPower && inqRemaining < TimeSpan.FromSeconds(InquisitionOverlap))
+                sim.Cast("Inquisition");
+            
+            if (inqRemaining < TimeSpan.Zero && sim.EffectiveHolyPower >= MinInquisitionHp)
                 sim.Cast("Inquisition");
             
             // Stacked Cooldowns

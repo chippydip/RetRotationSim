@@ -5,23 +5,43 @@
 using System;
 using System.Linq;
 
+using RetRotationSim.Collections;
+
 namespace RetRotationSim
 {
     class Program
     {
         public static void Main(string[] args)
         {
-            Simulator sim = new Simulator406();
-            DamageCalc calc = new DamageCalc406(sim);
+            DamageCalc calc = new DamageCalc403a();
+            //DamageCalc calc = new DamageCalc406();
             
-            sim.OnEvent = PickAbility6sRefresh;
+            calc.Sim.OnEvent = PickAbility6sRefresh;
             //calc.Random = new Random(0);
             
             SetRedcape513(calc);
             //SetExemplar107(calc);
             
+            //TestDps(calc, 600);
+            //TestStatWeights(calc, "str"); // str, crit, haste, or mastery
+            
+            calc.Sim.Has4pT11 = false;
+            TestRotationInqRefresh(calc);
+            
+            Console.Write("Press any key to continue . . . ");
+            Console.ReadKey(true);
+        }
+        
+        private static void TestDps (DamageCalc calc, double minutes)
+        {
             var recount = new Recount(calc);
-            //sim.Random = new Random(0); // same sequence all the time
+            calc.Sim.Run(TimeSpan.FromMinutes(minutes));
+            recount.Print();
+        }
+        
+        private static void TestStatWeights (DamageCalc calc, string stat)
+        {
+            var recount = new Recount(calc);
             
             Histogram hist = new Histogram(-1e6, 1e6, 1); // not really a histogram, but will keep track of Mean and StdDev
             
@@ -40,40 +60,38 @@ namespace RetRotationSim
             double spellCrit1 = calc.SpellCritChance;
             double spellCrit2 = spellCrit1 + 100 / 17928.0;
             
-            double haste1 = sim.SpellHaste / 1.05 / 1.09;
+            double haste1 = calc.Sim.SpellHaste / 1.05 / 1.09;
             double haste2 = haste1 + 100 / 12805.701;
             
-            double ws1 = sim.WeaponSpeed;
-            double ws2 = sim.WeaponSpeed * haste1 / haste2;
+            double ws1 = calc.Sim.WeaponSpeed;
+            double ws2 = calc.Sim.WeaponSpeed * haste1 / haste2;
             
-            double spellHaste1 = sim.SpellHaste;
-            double spellHaste2 = sim.SpellHaste / haste1 * haste2;
+            double spellHaste1 = calc.Sim.SpellHaste;
+            double spellHaste2 = calc.Sim.SpellHaste / haste1 * haste2;
             
-            double mastery1 = sim.Mastery;
-            double mastery2 = sim.Mastery + 100 / 17928.0;
+            double mastery1 = calc.Sim.Mastery;
+            double mastery2 = calc.Sim.Mastery + 100 / 17928.0;
             
-            var test = "mastery";
-            
-            if (test != "str")
+            if (stat != "str")
             {
                 str2 = str1;
                 ap2 = ap1;
                 sp2 = sp1;
             }
             
-            if (test != "crit")
+            if (stat != "crit")
             {
                 crit2 = crit1;
                 spellCrit2 = spellCrit1;
             }
             
-            if (test != "haste")
+            if (stat != "haste")
             {
                 ws2 = ws1;
                 spellHaste2 = spellHaste1;
             }
             
-            if (test != "mastery")
+            if (stat != "mastery")
                 mastery2 = mastery1;
             
             int minutes = 600;
@@ -85,10 +103,11 @@ namespace RetRotationSim
                 calc.SpellPower = sp1;
                 calc.MeleeCritChance = crit1;
                 calc.SpellCritChance = spellCrit1;
-                sim.WeaponSpeed = ws1;
-                sim.SpellHaste = spellHaste1;
-                sim.Mastery = mastery1;
-                sim.Run(TimeSpan.FromMinutes(minutes));
+                calc.Sim.WeaponSpeed = ws1;
+                calc.Sim.SpellHaste = spellHaste1;
+                calc.Sim.Mastery = mastery1;
+                
+                calc.Sim.Run(TimeSpan.FromMinutes(minutes));
                 double dps1 = recount.Dps;
                 recount.Reset();
                 
@@ -97,10 +116,11 @@ namespace RetRotationSim
                 calc.SpellPower = sp2;
                 calc.MeleeCritChance = crit2;
                 calc.SpellCritChance = spellCrit2;
-                sim.WeaponSpeed = ws2;
-                sim.SpellHaste = spellHaste2;
-                sim.Mastery = mastery2;
-                sim.Run(TimeSpan.FromMinutes(minutes));
+                calc.Sim.WeaponSpeed = ws2;
+                calc.Sim.SpellHaste = spellHaste2;
+                calc.Sim.Mastery = mastery2;
+                
+                calc.Sim.Run(TimeSpan.FromMinutes(minutes));
                 double dps2 = recount.Dps;
                 recount.Reset();
                 
@@ -109,11 +129,59 @@ namespace RetRotationSim
                 if (i % 10 == 9)
                     Console.WriteLine("Average DPS: {0:0.0} StdDev: {1:0.0}", hist.Mean, hist.SampleStandardDeviation);
             }
+        }
+        
+        private class RotationEntry : IComparable<RotationEntry>
+        {
+            public string Name;
+            public Histogram Hist;
             
-            //recount.Print();
+            public int CompareTo (RotationEntry other)
+            {
+                return Hist.Mean.CompareTo(other.Hist.Mean);
+            }
+        }
+        
+        private static void TestRotationInqRefresh (DamageCalc calc)
+        {
+            var rotation = new Rotation();
+            calc.Sim.OnEvent = rotation.OnUpdate;
             
-            Console.Write("Press any key to continue . . . ");
-            Console.ReadKey(true);
+            var heap = new Heap<RotationEntry>();
+            var recount = new Recount(calc);
+            
+            for (int s = 0; s <= 10; ++s)
+            {
+                rotation.InquisitionOverlap = s;
+                
+                for (int hp = 1; hp <= 3; ++hp)
+                {
+                    rotation.MinInquisitionHp = hp;
+                    var name = string.Format("Refresh under {0}s with at least {1}hp after falling:", s, hp);
+                    Console.WriteLine(name);
+                    var hist = new Histogram(-1e6, 1e6, 1);
+                    
+                    for (int i = 1; i <= 30; ++i)
+                    {
+                        calc.Sim.Run(TimeSpan.FromMinutes(600));
+                        hist.Add(recount.Dps);
+                        recount.Reset();
+                        
+                        if (i % 10 == 0)
+                            Console.WriteLine("    Average DPS: {0:0.0} StdDev: {1:0.0}", hist.Mean, hist.SampleStandardDeviation);
+                    }
+                    
+                    heap.Push(new RotationEntry() { Name = name, Hist = hist });
+                }
+                Console.WriteLine();
+            }
+            
+            // Top 10
+            for (int i = 1; i <= 10; ++i)
+            {
+                var entry = heap.Pop();
+                Console.WriteLine("#{0}: {1}: Average DPS: {2:0.0} StdDev: {1:0.0}", i, entry.Name, entry.Hist.Mean, entry.Hist.SampleStandardDeviation);
+            }
         }
         
         private static void SetRedcape513 (DamageCalc calc)
